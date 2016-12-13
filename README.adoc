@@ -1,3 +1,9 @@
 = eve-picheck
 
 command line tool for checking planetary interaction extractots in EVE Online
+
+== Implementation notes
+* https://forums.eveonline.com/default.aspx?g=posts&m=6717603[SSO from the command line] (EVE Online forum thread)
+* https://eveonline-third-party-documentation.readthedocs.io/en/latest/sso/authentication.html[SSO reference]
+* https://github.com/request/request[Request Module] for REST Calls
+* http://momentjs.com/[Working with dates in nodejs]
