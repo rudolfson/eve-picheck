@@ -1,6 +1,6 @@
 = eve-picheck
 
-command line tool for checking planetary interaction extractots in EVE Online
+command line tool for checking planetary interaction extractors in EVE Online
 
 == Implementation notes
 * https://forums.eveonline.com/default.aspx?g=posts&m=6717603[SSO from the command line] (EVE Online forum thread)
