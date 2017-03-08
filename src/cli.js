@@ -3,18 +3,25 @@ const url = require('url');
 const opn = require('opn');
 const requestify = require('requestify');
 const express = require('express');
-const Deferred = require("promised-io/promise").Deferred;
 const fs = require('fs');
+const Rx = require('rxjs/Rx');
 
 const config = JSON.parse(fs.readFileSync(`${process.env['HOME']}/.esi.json`, 'utf8'));
+
+let authorizationSubject = new Rx.Subject();
+let authorizationObservable = Rx.Observable.create(observer => {
+    authorizationSubject.subscribe(observer);
+    return () => {
+    };
+});
+
 
 /**
  *  Authorize the given scope against the EVE SSO.
  * @param scope array of scopes to authorize
- * @returns promise returning the token or whatever
+ * @returns an observable
  */
 function authorize(scopes) {
-    let deferred = new Deferred();
     // start the callback server
     const callbackServer = express();
     callbackServer.get('/callback', (callbackRequest, callbackResponse) => {
@@ -28,9 +35,9 @@ function authorize(scopes) {
         }).then((tokenResponse) => {
             let authorization = tokenResponse.getBody();
             esi.ApiClient.instance.authentications['evesso'].accessToken = authorization.access_token;
-            deferred.resolve();
+            authorizationSubject.next(authorization);
         }, (error) => {
-            deferred.reject(error);
+            authorizationSubject.error(error);
         });
         callbackResponse.send('You are allowed to close this now.');
     });
@@ -46,24 +53,16 @@ function authorize(scopes) {
     authUrl.search = search;
 
     opn(authUrl.toString());
-
-    return deferred.promise;
 }
 
 
 function getCharacterID() {
-    let deferred = new Deferred();
-    requestify.get('https://login.eveonline.com/oauth/verify', {
-        headers: {
-            Authorization: 'Bearer ' + esi.ApiClient.instance.authentications['evesso'].accessToken
-        }
-    }).then((data) => {
-        deferred.resolve(data.getBody().CharacterID);
-    }, (error) => {
-        deferred.reject(error);
-    });
-
-    return deferred.promise;
+    return Rx.Observable.fromPromise(
+        requestify.get('https://login.eveonline.com/oauth/verify', {
+            headers: {
+                Authorization: 'Bearer ' + esi.ApiClient.instance.authentications['evesso'].accessToken
+            }
+        })).map(data => data.getBody().CharacterID);
 }
 
 function getPlanets(characterID) {
@@ -80,19 +79,25 @@ function getStructuresOnPlanet() {
 }
 
 /// PI stuff
-authorize(['esi-planets.manage_planets.v1']).then(() => {
-    getCharacterID().then((characterID) => {
-        getPlanets(characterID);
-    }, (error) => {
-        console.error(error);
-    });
-}, (error) => {
-    console.error(error);
-    exit();
-});
+authorize(['esi-planets.manage_planets.v1']);
+authorizationObservable
+    .map(() => getCharacterID())
+    .map(id => console.log(`Woohooo, got that id : ${id}`));
 
-
-function exit() {
-    process.exit();
-}
+//
+// then(() => {
+//     getCharacterID().then((characterID) => {
+//         getPlanets(characterID);
+//     }, (error) => {
+//         console.error(error);
+//     });
+// }, (error) => {
+//     console.error(error);
+//     exit();
+// });
+//
+//
+// function exit() {
+//     process.exit();
+// }
 
