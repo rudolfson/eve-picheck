@@ -14,6 +14,8 @@ const crypto = require('crypto'); // generate random state for OAuth2
 const AUTH_BASE = 'https://login.eveonline.com/oauth';
 const API_BASE = 'https://esi.tech.ccp.is/latest';
 
+const config = JSON.parse(fs.readFileSync(`${process.env['HOME']}/.esi.json`, 'utf8'));
+
 /**
  * Make a call to the EsiApi.
  *
@@ -52,23 +54,19 @@ function callAuthApi(url) {
  * @param authorization
  * @returns {*|Observable<T>}
  */
-function getCharacterId(authorization) {
-    return callAuthApi('/verify', authorization)
-        .map(data => {
-            return CharacterID;
-        });
+function getCharacterId() {
+    return callAuthApi.call(this, '/verify')
+        .map(response => response.getBody())
+        .map(body => body.CharacterID);
 }
 
 function getPlanets(characterId) {
-    return callEsiApi.call(this, `/characters/${characterId}/planets/`)
-        .map(data => {
-            return {authorization: authorization, payload: data.getBody()}
-        });
+    return callEsiApi.call(this, `/characters/${characterId}/planets/`);
 }
 
 function getColonyLayout(planets) {
     return Rx.Observable.from(planets)
-        .mergeMap(planet => callEsiApi(`/characters/${planet.owner_id}/planets/${planet.planet_id}/`, authorization));
+        .mergeMap(planet => callEsiApi.call(this, `/characters/${planet.owner_id}/planets/${planet.planet_id}/`));
 }
 
 /**
@@ -78,6 +76,7 @@ function getColonyLayout(planets) {
  * @returns an observable
  */
 function authorize(scopes) {
+    startAuthenticationCallbackServer();
     // register awaiting authentication
     let registration = registerState();
     // open browser
@@ -145,36 +144,59 @@ function isAwaitingAuthentication(state) {
     return awaitingAuthentication[state] !== undefined;
 }
 
-// TODO warp this in an object - authenticator or something along the lines
+// TODO wrap this in an object - authenticator or something along the lines
 let awaitingAuthentication = {};
 
-// TODO we need some method around this, this is ugly, really, I mean it
+let authenticationCallbackServerStarted = false;
+
 // start the callback server
-const authenticationCallbackServer = express();
-authenticationCallbackServer.get('/callback', (callbackRequest, callbackResponse) => {
-    // check if we are waiting for an authentication for the given request
-    let state = callbackRequest.query.state;
-    if (!isAwaitingAuthentication(state)) {
-        callbackResponse.redirect(302, 'https://http.cat/400');
+function startAuthenticationCallbackServer() {
+    if (authenticationCallbackServerStarted === true) {
         return;
     }
-    let authorizationCode = callbackRequest.query.code;
-    notify(state, authorizationCode);
-    callbackResponse.send('Ok');
-});
-authenticationCallbackServer.listen(7070);
+    authenticationCallbackServerStarted = true;
+
+    const authenticationCallbackServer = express();
+    authenticationCallbackServer.get('/callback', (callbackRequest, callbackResponse) => {
+        // check if we are waiting for an authentication for the given request
+        let state = callbackRequest.query.state;
+        if (!isAwaitingAuthentication(state)) {
+            callbackResponse.redirect(302, 'https://http.cat/400');
+            return;
+        }
+        let authorizationCode = callbackRequest.query.code;
+        notify(state, authorizationCode);
+        callbackResponse.send('Ok');
+    });
+    authenticationCallbackServer.listen(7070);
+}
 
 class EveClient {
     constructor() {
-        this.x = Date.now();
+        this.created = Date.now();
+        this.authorization = null;
+        this.characterId = null;
     }
 
-    getPlanets(characterId) {
-        getPlanets.call(this, characterId);
+    authorize(scopes) {
+        return authorize.call(this, ['esi-planets.manage_planets.v1'])
+            .mergeMap(authenticationCode => getAccessToken(authenticationCode))
+            .mergeMap(authorization => {
+                this.authorization = authorization;
+                return getCharacterId.call(this);
+            })
+            .mergeMap(characterId => {
+                this.characterId = characterId;
+                console.log('characterId = ', characterId);
+                return Rx.Observable.from([characterId]);
+            });
+    }
+    getPlanets() {
+        return getPlanets.call(this, this.characterId);
     }
 
     getColonyLayout(planets) {
-        getColonyLayout.call(this, planets);
+        return getColonyLayout.call(this, planets);
     }
 }
 

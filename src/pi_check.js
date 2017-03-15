@@ -1,20 +1,27 @@
-const opn = require('opn'); // start system process to open browser
-const express = require('express'); // start local server for redirect after EVE authentication
-const fs = require('fs'); // read config
 const Rx = require('rxjs/Rx'); // do all the things
+const moment = require('moment');
 
-const config = JSON.parse(fs.readFileSync(`${process.env['HOME']}/.esi.json`, 'utf8'));
+const EveClient = require('./eve').EveClient;
 
-/// PI stuff
-authorize(['esi-planets.manage_planets.v1'])
-    .mergeMap(authenticationCode => getAccessToken(authenticationCode))
-    .mergeMap(authorization => getCharacterID(authorization))
-    .mergeMap(result => getPlanets(result.authorization, result.payload))
-    .mergeMap(result => getColonyLayout(result.authorization, result.payload))
+let client = new EveClient();
+client.authorize(['esi-planets.manage_planets.v1'])
+    .mergeMap(characterId => client.getPlanets())
+    .mergeMap(planets => client.getColonyLayout(planets))
+    .mergeMap(layout => layout.pins)
+    .filter(pin => pin.hasOwnProperty('expiry_time'))
+    .pluck('expiry_time')
     .subscribe(
-        result => console.log(result.payload),
+        result => {
+            console.log(result);
+            let expiry = moment(result);
+            let now = moment();
+            let diff = moment.duration(expiry.diff(now));
+            console.log(diff.asHours());
+        },
         error => {
             console.error(error);
             process.exit();
         },
-        obj => process.exit());
+        obj => process.exit()
+    );
+
