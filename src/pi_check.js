@@ -15,7 +15,7 @@ client.authorize(['esi-planets.manage_planets.v1'])
             let expiry = moment(result);
             let now = moment();
             let diff = moment.duration(expiry.diff(now));
-            console.log(diff.humanize(true));
+            console.log(`${diff.humanize(true)} (${Math.floor(diff.asHours())} hours)`);
         },
         error => {
             console.error(error);
