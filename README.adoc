@@ -23,7 +23,7 @@ further invocations will directly lead to the character selection.
 The program will check all your planets extractors and highlight those below a
 threshold. The default threshold is one day. You can use another threshold from
 the command line by adding a value in the format `"hours:minutes"` or `"days
-hours:minutesi"`. For example `"12:00"` would check for extractors running out
+hours:minutes"`. For example `"12:00"` would check for extractors running out
 in under twelve hours, `"2 0:0"` would check for extractors running out in under
 two days.
 
