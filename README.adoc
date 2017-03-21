@@ -10,8 +10,8 @@ Bash. I didn't test it anywhere else. So use at your own risk.
 
 == Installation
 
-# Clone the repo
-# run `npm install`
+1. Clone the repo
+1. run `npm install`
 
 == Usage
 
