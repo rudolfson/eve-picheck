@@ -2,11 +2,15 @@ const Rx = require('rxjs/Rx'); // do all the things
 const moment = require('moment');
 require('moment-duration-format');
 const util = require('util');
+const chalk = require('chalk');
 const EveClient = require('./eve').EveClient;
 
 // prepare input values
 let thresholdStr = process.argv.length >= 3 ? process.argv[2] :  '1 00:00';
 let threshold = moment.duration(thresholdStr);
+if (threshold.asMilliseconds() === 0) {
+    threshold = moment.duration('1 00:00');
+}
 console.log(`Checking for expiration in under ${threshold.format()}`);
 
 // start connecting and reading data
@@ -43,8 +47,7 @@ client.authorize(['esi-planets.manage_planets.v1'])
                 let expiry = moment(expiryTime);
                 let now = moment();
                 return moment.duration(expiry.diff(now));
-            })
-            .filter(expiryIn => expiryIn < threshold),
+            }),
         (outerValue, innerValue) => {
             outerValue.expiry = innerValue;
             return outerValue;
@@ -52,7 +55,13 @@ client.authorize(['esi-planets.manage_planets.v1'])
     )
     .subscribe(
         result => {
-            console.log(`${result.planetInfo.name} - ${result.expiry.format('d[d] h[h] m[m]')}`);
+            let line = `${result.planetInfo.name} - ${result.expiry.format('d[d] h[h] m[m]')}`;
+            if (result.expiry < threshold ) {
+                line = chalk.red(`* ${line}`);
+            } else {
+                line = chalk.green.dim(line);
+            }
+            console.log(line);
         },
         error => {
             console.error(error);

@@ -5,8 +5,8 @@ Command line tool for checking planetary interaction extractors in EVE Online
 == Requirements
 
 This application has been written using https://nodejs.org/[Node.js] version
-7.7.1. It has been tested with that node version under Windows 10 using the Git
-Bash. I didn't test it anywhere else. So use at your own risk.
+7.7.1. It has been tested with that node version under Windows 10. I didn't
+test it anywhere else. So use at your own risk.
 
 == Installation
 
@@ -26,6 +26,8 @@ the command line by adding a value in the format `"hours:minutes"` or `"days
 hours:minutes"`. For example `"12:00"` would check for extractors running out
 in under twelve hours, `"2 0:0"` would check for extractors running out in under
 two days.
+
+NOTE: If your output is colorless try adding `--color` at the end.
 
 == Implementation notes
 * https://eveonline-third-party-documentation.readthedocs.io/en/latest/sso/authentication.html[SSO reference]
