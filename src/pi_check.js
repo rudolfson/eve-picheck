@@ -1,21 +1,58 @@
 const Rx = require('rxjs/Rx'); // do all the things
 const moment = require('moment');
-
+require('moment-duration-format');
+const util = require('util');
 const EveClient = require('./eve').EveClient;
 
+// prepare input values
+let thresholdStr = process.argv.length >= 3 ? process.argv[2] :  '1 00:00';
+let threshold = moment.duration(thresholdStr);
+console.log(`Checking for expiration in under ${threshold.format()}`);
+
+// start connecting and reading data
 let client = new EveClient();
 client.authorize(['esi-planets.manage_planets.v1'])
-    .mergeMap(characterId => client.getPlanets())
-    .mergeMap(planets => client.getColonyLayout(planets))
-    .mergeMap(layout => layout.pins )
-    .filter(pin => pin.hasOwnProperty('expiry_time'))
-    .pluck('expiry_time')
+    .mergeMap(verification => {
+        console.log(`Authenticated as ${verification.CharacterName} (${verification.CharacterID})`);
+        return client.getPlanets();
+    })
+    .mergeMap(planets => Rx.Observable.from(planets))
+    .mergeMap(
+        planet => Rx.Observable.zip(
+            client.getPlanet(planet.planet_id),
+            client.getColonyLayout(planet),
+            (planetInfo, colonyLayout) => {
+                return {
+                    planetInfo: planetInfo,
+                    colonyLayout: colonyLayout
+                }
+            }),
+        (outerValue, innerValue) => {
+            return {
+                planet: outerValue,
+                planetInfo: innerValue.planetInfo,
+                colonyLayout: innerValue.colonyLayout
+            }
+        }
+    )
+    .mergeMap(
+        planetWithLayout => Rx.Observable.from(planetWithLayout.colonyLayout.pins)
+            .filter(pin => pin.hasOwnProperty('expiry_time'))
+            .pluck('expiry_time')
+            .map(expiryTime => {
+                let expiry = moment(expiryTime);
+                let now = moment();
+                return moment.duration(expiry.diff(now));
+            })
+            .filter(expiryIn => expiryIn < threshold),
+        (outerValue, innerValue) => {
+            outerValue.expiry = innerValue;
+            return outerValue;
+        }
+    )
     .subscribe(
         result => {
-            let expiry = moment(result);
-            let now = moment();
-            let diff = moment.duration(expiry.diff(now));
-            console.log(`${diff.humanize(true)} (${Math.floor(diff.asHours())} hours)`);
+            console.log(`${result.planetInfo.name} - ${result.expiry.format('d[d] h[h] m[m]')}`);
         },
         error => {
             console.error(error);

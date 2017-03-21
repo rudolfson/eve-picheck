@@ -20,23 +20,26 @@ const config = JSON.parse(fs.readFileSync(`${process.env['HOME']}/.esi.json`, 'u
  * Make a call to the EsiApi.
  *
  * @param url
- * @param authorization
+ * @param authorizationNeeded
  * @returns {Observable<T>|*}
  */
-function callEsiApi(url) {
+function callEsiApi(url, authorizationNeeded = true) {
+    let headers = {};
+    if (authorizationNeeded === true) {
+        headers.Authorization = `${this.authorization.token_type} ${this.authorization.access_token}`;
+    }
     return Rx.Observable.fromPromise(
         requestify.get(`${API_BASE}${url}`, {
-            headers: {
-                Authorization: `${this.authorization.token_type} ${this.authorization.access_token}`
-            }
-        })).map(response => response.getBody());
+            headers: headers
+        })).map(response => {
+            return response.getBody();
+        });
 }
 
 /**
  * Make a call to EVE SSO API.
  *
  * @param url
- * @param authorization
  * @returns {Observable<T>|*}
  */
 function callAuthApi(url) {
@@ -49,24 +52,26 @@ function callAuthApi(url) {
 }
 
 /**
- * Query the character id from ESI.
+ * Verify the current authentication.
  *
  * @param authorization
  * @returns {*|Observable<T>}
  */
-function getCharacterId() {
+function verify() {
     return callAuthApi.call(this, '/verify')
-        .map(response => response.getBody())
-        .map(body => body.CharacterID);
+        .map(response => response.getBody());
 }
 
 function getPlanets(characterId) {
     return callEsiApi.call(this, `/characters/${characterId}/planets/`);
 }
 
-function getColonyLayout(planets) {
-    return Rx.Observable.from(planets)
-        .mergeMap(planet => callEsiApi.call(this, `/characters/${planet.owner_id}/planets/${planet.planet_id}/`));
+function getColonyLayout(planet) {
+    return callEsiApi.call(this, `/characters/${planet.owner_id}/planets/${planet.planet_id}/`);
+}
+
+function getPlanet(planetId) {
+    return callEsiApi.call(this, `/universe/planets/${planetId}/`, false);
 }
 
 /**
@@ -183,20 +188,21 @@ class EveClient {
             .mergeMap(authenticationCode => getAccessToken(authenticationCode))
             .mergeMap(authorization => {
                 this.authorization = authorization;
-                return getCharacterId.call(this);
+                return verify.call(this);
             })
-            .mergeMap(characterId => {
-                this.characterId = characterId;
-                console.log('characterId = ', characterId);
-                return Rx.Observable.from([characterId]);
+            .mergeMap(verification => {
+                this.verification = verification;
+                return Rx.Observable.from([verification]);
             });
     }
     getPlanets() {
-        return getPlanets.call(this, this.characterId);
+        return getPlanets.call(this, this.verification.CharacterID);
     }
-
     getColonyLayout(planets) {
         return getColonyLayout.call(this, planets);
+    }
+    getPlanet(planetId) {
+        return getPlanet.call(this, planetId);
     }
 }
 
