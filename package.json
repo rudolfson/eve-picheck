@@ -12,5 +12,10 @@
     "requestify": "^0.2.5",
     "rxjs": "^5.2.0"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "repository": {
+     "type": "git",
+     "url": "https://github.com/rudolfson/eve-picheck.git"
+  },
+  "license": "CC-BY-4.0"
 }
