@@ -1,9 +1,33 @@
 = eve-picheck
 
-command line tool for checking planetary interaction extractors in EVE Online
+Command line tool for checking planetary interaction extractors in EVE Online
+
+== Requirements
+
+This application has been written using https://nodejs.org/[Node.js] version
+7.7.1. It has been tested with that node version under Windows 10 using the Git
+Bash. I didn't test it anywhere else. So use at your own risk.
+
+== Installation
+
+# Clone the repo
+# run `npm install`
+
+== Usage
+
+Run the application by typing `node src/pi_check.js`. This will start up a
+chrome in private mode asking for your credentials and giving access to your
+planetary colonies. If you leave the browser open you can reuse the login and
+further invocations will directly lead to the character selection.
+
+The program will check all your planets extractors and highlight those below a
+threshold. The default threshold is one day. You can use another threshold from
+the command line by adding a value in the format `"hours:minutes"` or `"days
+hours:minutesi"`. For example `"12:00"` would check for extractors running out
+in under twelve hours, `"2 0:0"` would check for extractors running out in under
+two days.
 
 == Implementation notes
-* https://forums.eveonline.com/default.aspx?g=posts&m=6717603[SSO from the command line] (EVE Online forum thread)
 * https://eveonline-third-party-documentation.readthedocs.io/en/latest/sso/authentication.html[SSO reference]
 * http://ranm8.github.io/requestify/[Requestify] or https://github.com/request/request[Request Module] for REST Calls
 * http://momentjs.com/[Working with dates in nodejs]
