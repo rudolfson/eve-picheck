@@ -7,14 +7,11 @@ const url = require('url'); // build URL to open browser with
 const opn = require('opn'); // start system process to open browser
 const requestify = require('requestify'); // external REST calls
 const express = require('express'); // start local server for redirect after EVE authentication
-const fs = require('fs'); // read config
 const Rx = require('rxjs/Rx'); // do all the things
 const crypto = require('crypto'); // generate random state for OAuth2
 
 const AUTH_BASE = 'https://login.eveonline.com/oauth';
 const API_BASE = 'https://esi.tech.ccp.is/latest';
-
-const config = JSON.parse(fs.readFileSync(`${process.env['HOME']}/.esi.json`, 'utf8'));
 
 /**
  * Make a call to the EsiApi.
@@ -89,7 +86,10 @@ function authorize(scopes) {
     let search = new url.URLSearchParams();
     search.append('response_type', 'code');
     search.append('redirect_uri', 'http://localhost:7070/callback');
-    search.append('client_id', config.clientId);
+    let decipher = crypto.createDecipher('aes192', 'q094fhqhfoq47zndoq74to87aa3w6458a93469q23x6n3');
+    let decrypted = decipher.update('887e01de8751e8b04d28a746439b6e3f5a498d1740864adecb1d7b9343c04eedb50d009e28ec363867f324a46b42ec31', 'hex', 'utf-8');
+    decrypted += decipher.final('utf-8');
+    search.append('client_id', decrypted);
     search.append('scope', scopes.join(' '));
     search.append('state', registration.state);
     authUrl.search = search;
@@ -103,12 +103,18 @@ function authorize(scopes) {
  * @returns an observable
  */
 function getAccessToken(authorizationCode) {
+    let decipher = crypto.createDecipher('aes192', 'q094fhqhfoq47zndoq74to87aa3w6458a93469q23x6n3');
+    let clientId = decipher.update('887e01de8751e8b04d28a746439b6e3f5a498d1740864adecb1d7b9343c04eedb50d009e28ec363867f324a46b42ec31', 'hex', 'utf-8');
+    clientId += decipher.final('utf-8');
+    decipher = crypto.createDecipher('aes192', 'q094fhqhfoq47zndoq74to87aa3w6458a93469q23x6n3');
+    let secret = decipher.update('eb5ee56507a4d65f2a78a487a0505a3cf13a78c0ae3bafacfe144abab9ea426fcbd0f6c45e3023ebac4dc0539a97a829', 'hex', 'utf-8');
+    secret += decipher.final('utf-8');
     return Rx.Observable.fromPromise(
         requestify.post(`${AUTH_BASE}/token`, {
             grant_type: 'authorization_code',
             code: authorizationCode
         }, {
-            auth: {username: config.clientId, password: config.clientSecret},
+            auth: {username: clientId, password: secret},
             dataType: 'form-url-encoded'
         })).map(response => response.getBody());
 }
