@@ -6,7 +6,7 @@ const chalk = require('chalk');
 const EveClient = require('./eve').EveClient;
 
 // prepare input values
-let thresholdStr = process.argv.length >= 3 ? process.argv[2] :  '1 00:00';
+let thresholdStr = process.argv.length >= 3 ? process.argv[2] : '1 00:00';
 let threshold = moment.duration(thresholdStr);
 if (threshold.asMilliseconds() === 0) {
     threshold = moment.duration('1 00:00');
@@ -46,7 +46,8 @@ client.authorize(['esi-planets.manage_planets.v1'])
             .map(expiryTime => {
                 let expiry = moment(expiryTime);
                 let now = moment();
-                return moment.duration(expiry.diff(now));
+                let diff = expiry.diff(now);
+                return moment.duration(diff);
             }),
         (outerValue, innerValue) => {
             outerValue.expiry = innerValue;
@@ -55,8 +56,11 @@ client.authorize(['esi-planets.manage_planets.v1'])
     )
     .subscribe(
         result => {
-            let line = `${result.planetInfo.name} - ${result.expiry.format('d[d] h[h] m[m]')}`;
-            if (result.expiry < threshold ) {
+            let expiryStr = result.expiry < 0 ? 'depleted!' : result.expiry.format('d[d] h[h] m[m]');
+            let line = `${result.planetInfo.name} - ${expiryStr}`;
+            if (result.expiry <= 0) {
+                line = chalk.bgRed.bold(`* ${line}`);
+            } else if (result.expiry < threshold) {
                 line = chalk.red(`* ${line}`);
             } else {
                 line = chalk.green.dim(line);
