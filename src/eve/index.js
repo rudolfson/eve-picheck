@@ -18,16 +18,18 @@ const API_BASE = 'https://esi.tech.ccp.is/latest';
  *
  * @param url
  * @param authorizationNeeded
+ * @param params
  * @returns {Observable<T>|*}
  */
-function callEsiApi(url, authorizationNeeded = true) {
+function callEsiApi(url, authorizationNeeded = true, params = {}) {
     let headers = {};
     if (authorizationNeeded === true) {
         headers.Authorization = `${this.authorization.token_type} ${this.authorization.access_token}`;
     }
     return Rx.Observable.fromPromise(
         requestify.get(`${API_BASE}${url}`, {
-            headers: headers
+            headers: headers,
+            params: params
         })).map(response => {
             return response.getBody();
         });
@@ -69,6 +71,14 @@ function getColonyLayout(planet) {
 
 function getPlanet(planetId) {
     return callEsiApi.call(this, `/universe/planets/${planetId}/`, false);
+}
+
+function getMarketsHistory(regionId, typeId) {
+    return callEsiApi.call(this, `/markets/${regionId}/history/`, false, {type_id: typeId});
+}
+
+function getMarketsOrders(regionId, typeId) {
+    return callEsiApi.call(this, `/markets/${regionId}/orders/`, false, {type_id: typeId});
 }
 
 /**
@@ -209,6 +219,12 @@ class EveClient {
     }
     getPlanet(planetId) {
         return getPlanet.call(this, planetId);
+    }
+    getMarketsHistory(regionId, typeId) {
+        return getMarketsHistory.call(this, regionId, typeId);
+    }
+    getMarketsOrders(regionId, typeId) {
+        return getMarketsOrders.call(this, regionId, typeId);
     }
 }
 
