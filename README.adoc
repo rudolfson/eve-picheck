@@ -1,6 +1,10 @@
 = eve-picheck
+:repo: https://github.com/rudolfson/eve-picheck
+:img: {repo}/raw/master/doc/images
 
 Command line tool for checking planetary interaction extractors in EVE Online
+
+image::{img}/sample_output.png[]
 
 == Requirements
 
