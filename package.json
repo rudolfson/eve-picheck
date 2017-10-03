@@ -14,8 +14,8 @@
   },
   "devDependencies": {},
   "repository": {
-     "type": "git",
-     "url": "https://github.com/rudolfson/eve-picheck.git"
+    "type": "git",
+    "url": "https://github.com/rudolfson/eve-picheck.git"
   },
   "license": "CC-BY-4.0"
 }
