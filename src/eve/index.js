@@ -104,7 +104,7 @@ function authorize(scopes) {
     search.append('scope', scopes.join(' '));
     search.append('state', registration.state);
     authUrl.search = search;
-    opn(authUrl.toString(), {app: [os.platform() === 'linux' ? 'google-chrome' : 'chrome']});
+    opn(authUrl.toString(), {app: ['firefox', '-new-window']});
     return registration.observable;
 }
 
